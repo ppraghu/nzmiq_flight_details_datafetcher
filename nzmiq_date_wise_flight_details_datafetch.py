@@ -20,12 +20,15 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning);
 #
 def get_current_date_nztz():
     now = datetime.now(pytz.timezone('Pacific/Auckland'));
+    print("NZ Time now: " + str(now));
     return now.strftime("%Y_%m_%d");
 
 #
 # URLs that we need to invoke at various steps
 #
 miqFlightCheckerURL = "https://allocation.miq.govt.nz/portal/flight-checker";
+
+# Not used after the MIQ site update on 2021-10-01
 miqPortalURL = "https://allocation.miq.govt.nz/portal/";
 miqLobbyURL = "https://lobby.miq.govt.nz";
 
@@ -172,50 +175,12 @@ def get_flight_date_data():
     #
     
     #
-    # Call 1: Visit https://allocation.miq.govt.nz/portal/
-    # Get the value of 'document.location.href' inside the inline
-    # Javascript. It will be something like this:
+    # Call 1: Visit the https://allocation.miq.govt.nz/portal/flight-checker
+    # This call will return, in its HTML file, the flight checker token 
+    # and the start/end dates of the flight data.
     #
-    # <script type='text/javascript'>
-    #   document.location.href = '/?c=miqnz&e=ppb4cc&cid=en-GB&tsr=1632979832&tsh=ab6fb4c3812';
-    # </script>
-    # Extract this 'href' value.
-    #
-    print_call_start(1, miqPortalURL);
-    response = session.get(miqPortalURL, headers = get_standard_headers());
-    htmlContent = response.text;
-    tree = html.fromstring(htmlContent);
-    locationHref = tree.xpath('/html/head/script[contains(@type, "javascript")]/text()')[0];
-    if "document.location.href" not in locationHref:
-        print_and_exit("The HTML page does not contain the document.location.href token");
-    locationHref = locationHref.strip();
-    infoLogger.info("Got the locationHref as [" + locationHref + "]");
-    # Ensure that this Javascript snippet contains document.location.href inside it
-    hrefValue = re.findall(r"'([^']*)'", locationHref)[0];
-    infoLogger.info("Got hrefValue as [" + hrefValue + "]");
-    print_call_end(1);
-
-    #
-    # Call 2: Visit https://lobby.miq.govt.nz with the above href value as the
-    # GET parameters. Include the same cookies received from the above call.
-    # This call, I believe, fetches some more cookies which are required to
-    # get the flight_checker_token which is required to get flight details.
-    #
-    miqLobbyFullURL = miqLobbyURL + hrefValue;
-    print_call_start(2, miqLobbyFullURL);
-    cookies = response.cookies; # Take the previous response's cookies
-    response = session.get(miqLobbyFullURL, headers = get_standard_headers(), cookies=cookies);
-    print_call_end(2);
-
-    #
-    # Call 3: Visit the https://allocation.miq.govt.nz/portal/flight-checker
-    # with all of the above cookies. This call will return, in its HTML file, the
-    # flight checker token and the start/end dates of the flight data.
-    #
-    print_call_start(3, miqFlightCheckerURL);
-    cookies = response.cookies;
-    response = session.post(miqFlightCheckerURL, headers = get_standard_headers(), cookies=cookies);
-    #print(response.text);
+    print_call_start(1, miqFlightCheckerURL);
+    response = session.post(miqFlightCheckerURL, headers = get_standard_headers());
     htmlContent = response.text;
     if "flight_checker__token" not in htmlContent:
         print_and_exit("The HTML page does not contain the flight_checker__token snippet");
@@ -230,10 +195,10 @@ def get_flight_date_data():
     maxDateStr = tree.xpath(chosenDateXPath + '@max')[0];
     infoLogger.info("Got these details: minDate [" 
         + minDateStr + "] and maxDate [" + maxDateStr + "]");
-    print_call_end(3);
+    print_call_end(1);
 
     #
-    # Call 4:
+    # Call 2:
     # Now that we have gotten flight Checker Token, min/max dates,
     # let us iterate through the dates and fetch the flight details
     # for each date. 
@@ -248,7 +213,7 @@ def get_flight_date_data():
     }
     cookies = response.cookies;
     count = 0;
-    print_call_start(4, miqFlightCheckerURL);
+    print_call_start(2, miqFlightCheckerURL);
     while minAvailableDate <= maxAvailableDate:
         dateOfInterest = minAvailableDate.strftime("%Y-%m-%d");
         infoLogger.info("");
@@ -269,7 +234,7 @@ def get_flight_date_data():
         #if (count > 2):
         #    break;
 
-    print_call_end(4);
+    print_call_end(2);
 
     #
     # Convert the generated CSV file into an Excel file
