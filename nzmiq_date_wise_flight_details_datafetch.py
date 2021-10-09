@@ -21,7 +21,9 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning);
 def get_current_date_nztz():
     now = datetime.now(pytz.timezone('Pacific/Auckland'));
     print("NZ Time now: " + str(now));
-    return now.strftime("%Y_%m_%d");
+    print("NZ Time now in a readable format: " + now.strftime("%Y-%m-%d %I:%M %p %Z"));
+    fileNameTimeStamp = now.strftime("%Y_%m_%d_Time_%I_%p_%Z")
+    return fileNameTimeStamp;
 
 #
 # URLs that we need to invoke at various steps
@@ -32,7 +34,7 @@ miqFlightCheckerURL = "https://allocation.miq.govt.nz/portal/flight-checker";
 miqPortalURL = "https://allocation.miq.govt.nz/portal/";
 miqLobbyURL = "https://lobby.miq.govt.nz";
 
-outputFileBaseName = "nzmiq_flight_data_as_of_" + get_current_date_nztz();
+outputFileBaseName = "NZMIQ_Flights_Data_as_of_" + get_current_date_nztz();
 csvFile = outputFileBaseName + '.csv';
 excelFile = outputFileBaseName + '.xlsx';
 csvLogger = None;
